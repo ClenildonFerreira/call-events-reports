@@ -137,35 +137,57 @@ class Listener {
     async #onSocketMessage(data) {
         try {
             const msg = JSON.parse(data);
-
+    
             log.debug(`Listener - got message: ${json(msg)}`);
-
-            if (msg.data.type == 'WEBSOCKET_REFRESH_REQUIRED') {
+    
+            if (msg.data.type === 'WEBSOCKET_REFRESH_REQUIRED') {
                 log.debug('WEBSOCKET_REFRESH_REQUIRED: Refreshing notification channel');
                 ns.refreshNotificationChannel(this.#channel.channelId)
-                    .then(_ => {
+                    .then(() => {
                         log.info('Listener - refreshed notification channel');
                     })
                     .catch(e => {
                         log.error(`Listener - failed to refresh notification (${e}): will reconnect...`);
                         this.#scheduleReconnectAttempt();
                     });
-            } else if (msg.data.type == 'WEBSOCKET_TO_BE_CLOSED') {
+            } else if (msg.data.type === 'WEBSOCKET_TO_BE_CLOSED') {
                 log.info('WEBSOCKET_TO_BE_CLOSED: Recreating connection');
                 this.#scheduleReconnectAttempt(true);
-            } else if (msg.data.source == CALL_EVENTS_REPORT_NOTIFICATION_SOURCE) {
+            } else if (msg.data.source === CALL_EVENTS_REPORT_NOTIFICATION_SOURCE) {
+                // Chama a função para buscar eventos de chamadas
                 callEventsReport.fetchCallEvents(msg.data.content.conversationSpaceId)
                     .then(response => {
-                        log.info(`Listener - call events report: ${json(response.data)}`);
+                        // Captura o JSON diretamente
+                        const callDetails = response.data; // Captura o JSON completo
+    
+                        // Itera sobre os participantes e verifica se o tipo é AGENT
+                        callDetails.participants.forEach(participant => {
+                            if (participant.type?.value === 'AGENT') {
+                                if (callDetails.callStates.length > 0) {
+                                    log.info(`Data e Hora: ${callDetails.callStates[0].timestamp}`);
+                                }
+
+                                // Logando as informações do agente
+                                log.info(`Nome: ${participant.type?.name || 'N/A'}`);
+                                log.info(`Ramal: ${participant.type?.extensionNumber || 'N/A'}`);
+
+                                if(callDetails.callStates.length > 0) {
+                                    log.info(` Nome Empresa: ${callStates.type?.name || 'N/A'}`);
+                                    log.info(` Numero Empresa: ${callStates.type?.number || 'N/A'}`);
+                                    log.info(` Numero Cliente: ${callStates.type?.caller?.number || 'N/A'}`);
+                                }
+                            }
+                        });
                     })
                     .catch(e => {
                         log.error(`Listener - failed to fetch call events report ${msg.data.content.conversationSpaceId}: ${e}`);
-                    })
+                    });
             }
         } catch (e) {
             log.error(`Listener - message handler got error ${e}`);
         }
     }
+    
 }
 
 
