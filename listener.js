@@ -171,10 +171,30 @@ class Listener {
                                 log.info(`Nome: ${participant.type?.name || 'N/A'}`);
                                 log.info(`Ramal: ${participant.type?.extensionNumber || 'N/A'}`);
 
-                                if(callDetails.callStates.length > 0) {
-                                    log.info(` Nome Empresa: ${callStates.type?.name || 'N/A'}`);
-                                    log.info(` Numero Empresa: ${callStates.type?.number || 'N/A'}`);
-                                    log.info(` Numero Cliente: ${callStates.type?.caller?.number || 'N/A'}`);
+                                if (callDetails.callStates.length > 0) {
+                                    const firstState = callDetails.callStates[0]; // Pegando o primeiro estado
+                                    if (firstState.participants && firstState.participants.length > 0) {
+                                        log.info(`Nome Empresa: ${firstState.participants[0].type?.name || 'N/A'}`);
+                                        log.info(`Numero Empresa: ${firstState.participants[0].type?.number || 'N/A'}`);
+                                        log.info(`Numero Cliente: ${firstState.participants[0].type?.caller.number || 'N/A'}`);
+
+                                    } else {
+                                        log.info("Nenhum participante encontrado");
+                                    }
+
+                                    if (callDetails.interactiveVoiceResponseSystems?.length > 0) {
+                                        // Procura um IVR onde result seja "DIALED_OPTION"
+                                        const ivr = callDetails.interactiveVoiceResponseSystems.find(
+                                            ivr => ivr.type?.currentNode?.result === "DIALED_OPTION"
+                                        );
+                                    
+                                        if (ivr) {
+                                            const option = ivr.type.currentNode.option || "N/A";
+                                            log.info(`Opção escolhida: ${option}`);
+                                        } else {
+                                            log.info("Nenhuma opção encontrada com result = DIALED_OPTION");
+                                        }
+                                    }
                                 }
                             }
                         });

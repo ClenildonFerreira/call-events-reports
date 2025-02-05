@@ -1,0 +1,9 @@
+[20:45:39.406] [32minfo[39m - Listener - connect(): created notification channel 0o8oAybnQ94wpbeW9Tqn6SmQS3eyu34LiDqhBKyqTvf3HA4FGx0zTUtbJaYUo0SQdmHFuUXnzwLt6VxVB5wvN0Q
+[20:45:40.607] [32minfo[39m - Listener - connect(): created subscription e069fd58-112f-49c5-9035-c364dfbbc714
+[20:45:40.834] [32minfo[39m - Listener - connected to wss://webrtc.jive.com/notification-channel-ws/v1/channels/demo/0o8oAybnQ94wpbeW9Tqn6SmQS3eyu34LiDqhBKyqTvf3HA4FGx0zTUtbJaYUo0SQdmHFuUXnzwLt6VxVB5wvN0Q/ws
+[20:46:28.573] [32minfo[39m - Data e Hora: 2025-02-04T20:45:53.531Z
+[20:46:28.574] [32minfo[39m - Nome: Elivelton Bosco
+[20:46:28.575] [32minfo[39m - Ramal: 6134
+[20:49:45.113] [32minfo[39m - Listener - disconnect(): closing websocket
+[20:49:45.115] [32minfo[39m - Listener - disconnect(): deleting subscription
+[20:49:45.116] [32minfo[39m - Listener - disconnect(): deleting notification channel

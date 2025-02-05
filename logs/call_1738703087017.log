@@ -1,0 +1,10 @@
+[21:04:57.649] [32minfo[39m - Listener - connect(): created notification channel 0-ljk9rd6FujqmE-fCmKRYUz08fMr6MsEYAsmtE02LU48lBcaY3eYQpDi0U5A_bTj1sWCoFfWSRdJnl5mL4BInw
+[21:04:58.932] [32minfo[39m - Listener - connect(): created subscription db81a027-d477-48fe-86c9-3e4e27f9bc5e
+[21:04:59.184] [32minfo[39m - Listener - connected to wss://webrtc.jive.com/notification-channel-ws/v1/channels/demo/0-ljk9rd6FujqmE-fCmKRYUz08fMr6MsEYAsmtE02LU48lBcaY3eYQpDi0U5A_bTj1sWCoFfWSRdJnl5mL4BInw/ws
+[21:06:20.308] [32minfo[39m - Data e Hora: 2025-02-04T21:05:23.551Z
+[21:06:20.309] [32minfo[39m - Nome: Ruan Mateus
+[21:06:20.310] [32minfo[39m - Ramal: 6104
+[21:06:20.311] [31merror[39m - Listener - failed to fetch call events report 4b3c775d-7d31-3bce-bf35-c0a0050d4dc5: ReferenceError: callStates is not defined
+[21:07:59.142] [32minfo[39m - Listener - disconnect(): closing websocket
+[21:07:59.143] [32minfo[39m - Listener - disconnect(): deleting subscription
+[21:07:59.143] [32minfo[39m - Listener - disconnect(): deleting notification channel
