@@ -1,5 +1,5 @@
 // Emit logs in UTC timezone to make it easier to compare log timestamp with timestamp embedded in responses (which are in UTC)
-process.env.TZ='UTC';
+process.env.TZ='America/Fortaleza';
 import {} from 'dotenv/config';
 import logger from './logger.js';
 import { TokenFetcher } from './token.js';

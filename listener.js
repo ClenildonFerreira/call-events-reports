@@ -5,6 +5,7 @@ import WebSocket from 'ws';
 import logger from './logger.js'
 import ns from './ns.js'
 import callEventsReport from './call-events-report.js'
+import axios from 'axios';
 
 const CALL_EVENTS_REPORT_NOTIFICATION_SOURCE = 'call-events-report'
 const PING_INTERVAL_MS = 8000;
@@ -156,48 +157,14 @@ class Listener {
             } else if (msg.data.source === CALL_EVENTS_REPORT_NOTIFICATION_SOURCE) {
                 // Chama a função para buscar eventos de chamadas
                 callEventsReport.fetchCallEvents(msg.data.content.conversationSpaceId)
-                    .then(response => {
+                    .then(async response => {
                         // Captura o JSON diretamente
                         const callDetails = response.data; // Captura o JSON completo
-    
-                        // Itera sobre os participantes e verifica se o tipo é AGENT
-                        callDetails.participants.forEach(participant => {
-                            if (participant.type?.value === 'AGENT') {
-                                if (callDetails.callStates.length > 0) {
-                                    log.info(`Data e Hora: ${callDetails.callStates[0].timestamp}`);
-                                }
 
-                                // Logando as informações do agente
-                                log.info(`Nome: ${participant.type?.name || 'N/A'}`);
-                                log.info(`Ramal: ${participant.type?.extensionNumber || 'N/A'}`);
+                        log.info(JSON.stringify(callDetails, null, 2));
 
-                                if (callDetails.callStates.length > 0) {
-                                    const firstState = callDetails.callStates[0]; // Pegando o primeiro estado
-                                    if (firstState.participants && firstState.participants.length > 0) {
-                                        log.info(`Nome Empresa: ${firstState.participants[0].type?.name || 'N/A'}`);
-                                        log.info(`Numero Empresa: ${firstState.participants[0].type?.number || 'N/A'}`);
-                                        log.info(`Numero Cliente: ${firstState.participants[0].type?.caller.number || 'N/A'}`);
-
-                                    } else {
-                                        log.info("Nenhum participante encontrado");
-                                    }
-
-                                    if (callDetails.interactiveVoiceResponseSystems?.length > 0) {
-                                        // Procura um IVR onde result seja "DIALED_OPTION"
-                                        const ivr = callDetails.interactiveVoiceResponseSystems.find(
-                                            ivr => ivr.type?.currentNode?.result === "DIALED_OPTION"
-                                        );
-                                    
-                                        if (ivr) {
-                                            const option = ivr.type.currentNode.option || "N/A";
-                                            log.info(`Opção escolhida: ${option}`);
-                                        } else {
-                                            log.info("Nenhuma opção encontrada com result = DIALED_OPTION");
-                                        }
-                                    }
-                                }
-                            }
-                        });
+                        // Envio dos detalhes para o webhook
+                        await this.#sendToWebhook(callDetails);
                     })
                     .catch(e => {
                         log.error(`Listener - failed to fetch call events report ${msg.data.content.conversationSpaceId}: ${e}`);
@@ -205,6 +172,17 @@ class Listener {
             }
         } catch (e) {
             log.error(`Listener - message handler got error ${e}`);
+        }
+    }
+
+
+    async #sendToWebhook(data) {
+        try {
+            const webhookUrl = 'https://n8n.cearatec.cloud/webhook-test/nps02_teste'; // substitua pela sua URL de webhook
+            await axios.post(webhookUrl, data);
+            log.info('Data sent to webhook successfully');
+        } catch (e) {
+            log.error(`Failed to send data to webhook: ${e}`);
         }
     }
     
