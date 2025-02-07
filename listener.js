@@ -1,13 +1,14 @@
 /**
- * Handles websocket notifications
+ * Handles websocket notifications developer by clenildon ferreira
+ * LICENSE MIT
  */
 import WebSocket from 'ws';
-import logger from './logger.js'
-import ns from './ns.js'
-import callEventsReport from './call-events-report.js'
+import logger from './logger.js';
+import ns from './ns.js';
+import callEventsReport from './call-events-report.js';
 import axios from 'axios';
 
-const CALL_EVENTS_REPORT_NOTIFICATION_SOURCE = 'call-events-report'
+const CALL_EVENTS_REPORT_NOTIFICATION_SOURCE = 'call-events-report';
 const PING_INTERVAL_MS = 8000;
 const RECONNECT_DELAY_MS = 10000;
 
@@ -18,11 +19,13 @@ function json(o) {
 }
 
 class Listener {
-    #channel
-    #subscription
-    #ws
-    #reconnectTimer
-    #isShuttingDown
+    #channel;
+    #subscription;
+    #ws;
+    #reconnectTimer;
+    #isShuttingDown;
+    #queue; // Fila para gerenciar as mensagens a serem enviadas
+    #isProcessing; // Controle do status de processamento da fila
 
     constructor() {
         this.#channel = null;
@@ -30,12 +33,13 @@ class Listener {
         this.#ws = null;
         this.#reconnectTimer = null;
         this.#isShuttingDown = false;
+        this.#queue = []; // Inicializa a fila
+        this.#isProcessing = false; // Inicializa como não estar processando
     }
 
     async connect() {
         try {
             this.#cancelReconnectAttempt();
-
             log.debug('Listener - connect(): creating notification');
             this.#channel = (await ns.createNotificationChannel()).data;
             log.info(`Listener - connect(): created notification channel ${this.#channel.channelId}`);
@@ -45,10 +49,7 @@ class Listener {
             log.info(`Listener - connect(): created subscription ${this.#subscription.items[0].id}`);
 
             this.#ws = new WebSocket(this.#channel.channelData.channelURL);
-            this.#ws.pingSequence = 0;
-            this.#ws.pongSequence = 0;
             this.#ws.on('open', this.#onSocketOpen.bind(this));
-            this.#ws.on('pong', this.#onSocketPong.bind(this));
             this.#ws.on('close', this.#onSocketClose.bind(this));
             this.#ws.on('error', this.#onSocketError.bind(this));
             this.#ws.on('message', this.#onSocketMessage.bind(this));
@@ -70,7 +71,9 @@ class Listener {
             if (this.#ws.pingInterval) {
                 clearInterval(this.#ws.pingInterval);
             }
-            try { this.#ws.close(); } catch (e) { /* ignore */ }
+            try { 
+                this.#ws.close(); 
+            } catch (e) { /* ignore */ }
             this.#ws = null;
         }
 
@@ -103,26 +106,17 @@ class Listener {
 
     #onSocketOpen() {
         log.info(`Listener - connected to ${this.#ws.url}`);
-
         // Regularly ping the websocket server peer...
         this.#ws.pingInterval = setInterval(() => {
-            const ping = {
-                sequence: ++this.#ws.pingSequence
-            };
+            const ping = { sequence: ++this.#ws.pingSequence };
             this.#ws.ping(JSON.stringify(ping));
-
-            // ... and reconnect after 3 missed pong responses from the websocket peer
+            // Reconnect after 3 missed pong responses from the websocket peer
             const pendingPongs = this.#ws.pingSequence - this.#ws.pongSequence;
             if (pendingPongs > 3) {
                 log.error('Listener - websocket liveness check failed: will attempt to reconnect...');
                 this.#scheduleReconnectAttempt();
             }
         }, PING_INTERVAL_MS);
-    }
-
-    #onSocketPong(data) {
-        const pong = JSON.parse(data);
-        this.#ws.pongSequence = pong.sequence;
     }
 
     #onSocketClose(code, reason) {
@@ -138,57 +132,55 @@ class Listener {
     async #onSocketMessage(data) {
         try {
             const msg = JSON.parse(data);
-    
             log.debug(`Listener - got message: ${json(msg)}`);
-    
-            if (msg.data.type === 'WEBSOCKET_REFRESH_REQUIRED') {
-                log.debug('WEBSOCKET_REFRESH_REQUIRED: Refreshing notification channel');
-                ns.refreshNotificationChannel(this.#channel.channelId)
-                    .then(() => {
-                        log.info('Listener - refreshed notification channel');
-                    })
-                    .catch(e => {
-                        log.error(`Listener - failed to refresh notification (${e}): will reconnect...`);
-                        this.#scheduleReconnectAttempt();
-                    });
-            } else if (msg.data.type === 'WEBSOCKET_TO_BE_CLOSED') {
-                log.info('WEBSOCKET_TO_BE_CLOSED: Recreating connection');
-                this.#scheduleReconnectAttempt(true);
-            } else if (msg.data.source === CALL_EVENTS_REPORT_NOTIFICATION_SOURCE) {
-                // Chama a função para buscar eventos de chamadas
-                callEventsReport.fetchCallEvents(msg.data.content.conversationSpaceId)
-                    .then(async response => {
-                        // Captura o JSON diretamente
-                        const callDetails = response.data; // Captura o JSON completo
 
-                        log.info(JSON.stringify(callDetails, null, 2));
-
-                        // Envio dos detalhes para o webhook
-                        await this.#sendToWebhook(callDetails);
-                    })
-                    .catch(e => {
-                        log.error(`Listener - failed to fetch call events report ${msg.data.content.conversationSpaceId}: ${e}`);
-                    });
+            if (msg.data.source === CALL_EVENTS_REPORT_NOTIFICATION_SOURCE) {
+                // Adiciona a chamada na fila
+                this.enqueue(msg.data.content.conversationSpaceId);
             }
         } catch (e) {
             log.error(`Listener - message handler got error ${e}`);
         }
     }
 
+    enqueue(conversationSpaceId) {
+        this.#queue.push(conversationSpaceId); // Adiciona o ID da conversa à fila
+        this.processQueue(); // Inicia o processamento
+    }
+
+    async processQueue() {
+        if (this.#isProcessing) return; // Se já está processando, sai
+        this.#isProcessing = true; // Marca que está processando
+
+        while (this.#queue.length > 0) {
+            const conversationSpaceId = this.#queue.shift(); // Remove o primeiro item da fila
+            await this.handleCallEvent(conversationSpaceId); // Processa a chamada e envia ao webhook
+        }
+
+        this.#isProcessing = false; // Reseta a flag após o processamento
+    }
+
+    async handleCallEvent(conversationSpaceId) {
+        try {
+            const response = await callEventsReport.fetchCallEvents(conversationSpaceId);
+            const callDetails = response.data;
+            log.info(JSON.stringify(callDetails, null, 2));
+            // Envio dos detalhes para o webhook
+            await this.#sendToWebhook(callDetails);
+        } catch (e) {
+            log.error(`Listener - failed to fetch call events report ${conversationSpaceId}: ${e}`);
+        }
+    }
 
     async #sendToWebhook(data) {
         try {
-            const webhookUrl = 'https://n8n.cearatec.cloud/webhook-test/nps02_teste'; // substitua pela sua URL de webhook
+            const webhookUrl = 'https://n8nwebhook.cearatec.cloud/webhook/nps02_teste'; // URL do webhook
             await axios.post(webhookUrl, data);
             log.info('Data sent to webhook successfully');
         } catch (e) {
             log.error(`Failed to send data to webhook: ${e}`);
         }
     }
-    
 }
 
-
-export {
-    Listener
-}
+export { Listener };
