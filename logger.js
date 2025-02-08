@@ -45,8 +45,7 @@ function instance() {
             printf(log => `[${log.timestamp}] ${log.level} - ${log.message}`)
         ),
         transports: [
-            new winston.transports.Console(), // Mantém o log no terminal
-            new winston.transports.File({ filename: logFilePath }) // Adiciona log em arquivo
+            new winston.transports.Console(), 
         ]
     });
 }
