@@ -9,7 +9,7 @@ import qs from 'qs';
 
 const OAUTH_AUTHORIZE_URI = 'https://authentication.logmeininc.com/oauth/authorize';
 const OAUTH_TOKEN_URI = 'https://authentication.logmeininc.com/oauth/token';
-const OAUTH_REDIRECT_URI = 'http://188.245.183.219:12021/app/redirect';
+const OAUTH_REDIRECT_URI = 'http://185.249.227.23:12021/app/redirect';
 
 // Access tokens are refreshed after a third of their validity expired.
 // Using a value less than 0.5 allow retrying temporarily failed refresh
