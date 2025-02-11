@@ -173,14 +173,28 @@ class Listener {
     }
 
     async #sendToWebhook(data) {
-        try {
-            const webhookUrl = 'https://n8nwebhook.cearatec.cloud/webhook/nps02_teste'; // URL do webhook
-            await axios.post(webhookUrl, data);
-            log.info('Data sent to webhook successfully');
-        } catch (e) {
-            log.error(`Failed to send data to webhook: ${e}`);
+        const webhookUrl = 'https://n8nwebhook.cearatec.cloud/webhook/nps02_teste';
+        const maxRetries = 3;
+        const retryDelay = 5000; // 5 segundos entre tentativas
+    
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                await axios.post(webhookUrl, data);
+                log.info(`Data sent to webhook successfully on attempt ${attempt}`);
+                return; // Sai do loop se o envio for bem-sucedido
+            } catch (e) {
+                log.error(`Failed to send data to webhook (attempt ${attempt}): ${e}`);
+    
+                if (attempt < maxRetries) {
+                    log.info(`Retrying in ${retryDelay / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay)); // Aguarda antes da próxima tentativa
+                } else {
+                    log.error('Max retries reached. Failed to send data to webhook.');
+                }
+            }
         }
     }
+    
 }
 
 export { Listener };
